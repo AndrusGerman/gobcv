@@ -1,0 +1,70 @@
+# Configuración de Dependabot para BCV Currency API
+# Mantiene las dependencias actualizadas automáticamente
+
+version: 2
+updates:
+  # Dependencias de Go
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Caracas"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "AndrusGerman"
+    assignees:
+      - "AndrusGerman"
+    commit-message:
+      prefix: "⬆️"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "go"
+      - "automated"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    ignore:
+      # Ignorar actualizaciones que podrían romper compatibilidad
+      - dependency-name: "golang.org/x/*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "America/Caracas"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "maintainer-username" # Cambiar por el username del maintainer
+    commit-message:
+      prefix: "🔧"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "11:00"
+      timezone: "America/Caracas"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "maintainer-username" # Cambiar por el username del maintainer
+    commit-message:
+      prefix: "🐳"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"

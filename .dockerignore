@@ -1,0 +1,66 @@
+# Dockerfile .dockerignore para optimizar el contexto de build
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Binarios compilados
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de test
+*.test
+*.out
+coverage.out
+coverage.html
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Documentación local
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Dependencias locales
+vendor/
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# OS específicos
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Certificados
+*.pem
+*.key
+*.crt
+
+# Archivos de backup
+*.bak
+*.backup
+
+# Node modules (si los hubiera)
+node_modules/

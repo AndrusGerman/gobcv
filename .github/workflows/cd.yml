@@ -1,0 +1,258 @@
+# Workflow de CD para BCV Currency API
+# Build y push de imágenes Docker al registry de GitHub
+
+name: CD - Docker Build & Push
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment'
+        required: false
+        default: false
+        type: boolean
+
+# Variables de entorno globales
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Build y push de imagen Docker
+  docker-build-push:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: network=host
+        
+    - name: 🔐 Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🏷️ Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=BCV Currency API
+          org.opencontainers.image.description=API REST para tipos de cambio del Banco Central de Venezuela
+          org.opencontainers.image.vendor=AndrusCodex
+          org.opencontainers.image.licenses=MIT
+          
+    - name: 🏗️ Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDTIME=${{ github.event.head_commit.timestamp }}
+          VERSION=${{ github.ref_name }}
+          REVISION=${{ github.sha }}
+          
+    - name: 📋 Generate build summary
+      run: |
+        echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏷️ Tags:" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Escaneo de seguridad de la imagen
+  security-scan:
+    name: 🛡️ Security Scan
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    permissions:
+      security-events: write
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build-push.outputs.image-digest }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 📊 Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: 🔍 Run Trivy vulnerability scanner (Table)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build-push.outputs.image-digest }}
+        format: 'table'
+
+  # Job 3: Test de la imagen Docker
+  docker-test:
+    name: 🧪 Test Docker Image
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    
+    strategy:
+      matrix:
+        platform: [linux/amd64]
+        
+    steps:
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔐 Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🧪 Test Docker image
+      run: |
+        echo "Testing image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build-push.outputs.image-digest }}"
+        
+        # Ejecutar contenedor
+        docker run --rm -d --name test-api \
+          -p 8080:8080 \
+          -e SERVER_PORT=8080 \
+          -e SERVER_HOST=0.0.0.0 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build-push.outputs.image-digest }}
+        
+        # Esperar a que la API esté lista
+        timeout 60s bash -c 'until curl -f http://localhost:8080/api/v1/health; do sleep 2; done'
+        
+        # Ejecutar tests básicos
+        echo "🧪 Testing health endpoint..."
+        curl -f http://localhost:8080/api/v1/health
+        
+        echo "🧪 Testing currencies endpoint..."
+        curl -f http://localhost:8080/api/v1/currencies
+        
+        echo "🧪 Testing specific currency endpoint..."
+        curl -f http://localhost:8080/api/v1/currencies/USD || true
+        
+        echo "🧪 Testing refresh endpoint..."
+        curl -f -X POST http://localhost:8080/api/v1/currencies/refresh
+        
+        # Verificar logs del contenedor
+        echo "📋 Container logs:"
+        docker logs test-api
+        
+        # Limpiar
+        docker stop test-api
+        
+        echo "✅ All Docker tests passed!"
+
+  # Job 4: Actualizar tags del repositorio
+  update-tags:
+    name: 🏷️ Update Repository Tags
+    runs-on: ubuntu-latest
+    needs: [docker-build-push, security-scan, docker-test]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🏷️ Create/Update latest tag
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        
+        # Borrar tag latest si existe
+        git tag -d latest || true
+        git push origin :refs/tags/latest || true
+        
+        # Crear nuevo tag latest
+        git tag latest
+        git push origin latest
+
+  # Job 5: Notificación de deployment
+  notify-deployment:
+    name: 📢 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [docker-build-push, security-scan, docker-test]
+    if: always()
+    
+    steps:
+    - name: 📢 Create deployment summary
+      run: |
+        echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.docker-build-push.result }}" == "success" ]]; then
+          echo "✅ **Docker Build & Push:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Docker Build & Push:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ "${{ needs.security-scan.result }}" == "success" ]]; then
+          echo "✅ **Security Scan:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Security Scan:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ "${{ needs.docker-test.result }}" == "success" ]]; then
+          echo "✅ **Docker Test:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Docker Test:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Container Image" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Digest:** \`${{ needs.docker-build-push.outputs.image-digest }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏃‍♂️ How to run:" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "# Pull and run the image" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo "docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

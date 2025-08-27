@@ -1,0 +1,374 @@
+# Workflow de Release para BCV Currency API
+# Crea releases automáticos con binarios multiplataforma
+
+name: Release - Create Tagged Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        default: false
+        type: boolean
+
+# Variables de entorno globales
+env:
+  GO_VERSION: '1.24.2'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Crear release con binarios
+  create-release:
+    name: 🏷️ Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+      
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📝 Generate changelog
+      id: changelog
+      run: |
+        # Obtener el tag anterior
+        PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+        CURRENT_TAG=${GITHUB_REF#refs/tags/}
+        
+        # Si es el primer tag, usar desde el primer commit
+        if [ -z "$PREVIOUS_TAG" ]; then
+          PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+        fi
+        
+        echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
+        
+        # Generar changelog
+        cat > CHANGELOG.md << EOF
+        # Changelog for $CURRENT_TAG
+        
+        ## 🚀 What's Changed
+        
+        ### 📋 Commits
+        
+        EOF
+        
+        # Agregar commits desde el último tag
+        git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> CHANGELOG.md
+        
+        # Agregar información del build
+        cat >> CHANGELOG.md << EOF
+        
+        ## 📦 Assets
+        
+        ### 🐳 Docker Images
+        - \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$CURRENT_TAG\`
+        - \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`
+        
+        ### 💻 Binaries
+        - Linux (amd64, arm64)
+        - Windows (amd64)
+        - macOS (amd64, arm64)
+        
+        ## 🏃‍♂️ Quick Start
+        
+        ### Docker
+        \`\`\`bash
+        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$CURRENT_TAG
+        docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$CURRENT_TAG
+        \`\`\`
+        
+        ### Binary
+        \`\`\`bash
+        # Download for your platform from the assets below
+        chmod +x api-*
+        ./api-linux-amd64  # or your platform binary
+        \`\`\`
+        
+        ## 📖 Documentation
+        
+        Full documentation available at: [README.md](https://github.com/${{ github.repository }}/blob/$CURRENT_TAG/README.md)
+        EOF
+        
+        # Establecer el changelog como output
+        {
+          echo 'CHANGELOG<<EOF'
+          cat CHANGELOG.md
+          echo EOF
+        } >> $GITHUB_OUTPUT
+        
+    - name: 🏷️ Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+        release_name: 'BCV Currency API ${{ github.event.inputs.tag_name || github.ref_name }}'
+        body: ${{ steps.changelog.outputs.CHANGELOG }}
+        draft: false
+        prerelease: ${{ github.event.inputs.prerelease || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+
+  # Job 2: Build binarios multiplataforma
+  build-binaries:
+    name: 🏗️ Build Release Binaries
+    runs-on: ubuntu-latest
+    needs: create-release
+    permissions:
+      contents: write
+      
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            output: api-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output: api-linux-arm64
+          - goos: windows
+            goarch: amd64
+            output: api-windows-amd64.exe
+          - goos: darwin
+            goarch: amd64
+            output: api-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: api-darwin-arm64
+            
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: 📦 Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: 📥 Download dependencies
+      run: go mod download
+      
+    - name: 🏗️ Build binary for ${{ matrix.goos }}/${{ matrix.goarch }}
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        mkdir -p bin
+        
+        # Build con información de versión
+        VERSION=${GITHUB_REF#refs/tags/}
+        COMMIT=${{ github.sha }}
+        DATE=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+        
+        go build -a -installsuffix cgo \
+          -ldflags="-w -s -extldflags '-static' \
+                   -X 'main.Version=$VERSION' \
+                   -X 'main.Commit=$COMMIT' \
+                   -X 'main.Date=$DATE'" \
+          -o bin/${{ matrix.output }} \
+          cmd/api/main.go
+          
+        # Verificar el binario
+        file bin/${{ matrix.output }}
+        ls -la bin/${{ matrix.output }}
+        
+    - name: 📦 Create archive
+      run: |
+        cd bin
+        
+        # Crear archivo README para el release
+        cat > README.txt << EOF
+        BCV Currency API - ${GITHUB_REF#refs/tags/}
+        
+        Binary: ${{ matrix.output }}
+        Platform: ${{ matrix.goos }}/${{ matrix.goarch }}
+        Build Date: $(date -u)
+        Commit: ${{ github.sha }}
+        
+        Usage:
+          ./${{ matrix.output }}
+        
+        Environment Variables:
+          SERVER_PORT=8080          # Server port
+          SERVER_HOST=0.0.0.0       # Server host
+          CACHE_DEFAULT_TTL=5m      # Cache TTL
+          SCRAPER_REFRESH_INTERVAL=15m # Refresh interval
+          SCRAPER_TIMEOUT=30s       # Scraper timeout
+        
+        Endpoints:
+          GET  /                           - API documentation
+          GET  /api/v1/health              - Health check
+          GET  /api/v1/currencies          - Get all currencies
+          GET  /api/v1/currencies/{id}     - Get specific currency
+          POST /api/v1/currencies/refresh  - Refresh currencies
+          GET  /api/v1/cache/stats         - Cache statistics
+        
+        For more information visit:
+        https://github.com/${{ github.repository }}
+        EOF
+        
+        # Crear tarball/zip según plataforma
+        if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          zip -r ${{ matrix.output }}.zip ${{ matrix.output }} README.txt
+          ASSET_PATH="${{ matrix.output }}.zip"
+        else
+          tar -czf ${{ matrix.output }}.tar.gz ${{ matrix.output }} README.txt
+          ASSET_PATH="${{ matrix.output }}.tar.gz"
+        fi
+        
+        echo "ASSET_PATH=$ASSET_PATH" >> $GITHUB_ENV
+        
+    - name: 📤 Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./bin/${{ env.ASSET_PATH }}
+        asset_name: ${{ env.ASSET_PATH }}
+        asset_content_type: application/octet-stream
+
+  # Job 3: Build y push imagen Docker con tag de release
+  docker-release:
+    name: 🐳 Docker Release Build
+    runs-on: ubuntu-latest
+    needs: create-release
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔐 Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🏷️ Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest
+        labels: |
+          org.opencontainers.image.title=BCV Currency API
+          org.opencontainers.image.description=API REST para tipos de cambio del Banco Central de Venezuela
+          org.opencontainers.image.vendor=AndrusCodex
+          org.opencontainers.image.version=${{ github.ref_name }}
+          
+    - name: 🏗️ Build and push release Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILDTIME=${{ github.event.head_commit.timestamp }}
+          VERSION=${{ github.ref_name }}
+          REVISION=${{ github.sha }}
+
+  # Job 4: Crear checksums y firmas
+  create-checksums:
+    name: 🔐 Create Checksums
+    runs-on: ubuntu-latest
+    needs: [create-release, build-binaries]
+    permissions:
+      contents: write
+      
+    steps:
+    - name: 📥 Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: 🔐 Generate checksums
+      run: |
+        # Crear directorio para checksums
+        mkdir -p checksums
+        
+        # Generar SHA256 checksums para todos los binarios
+        find . -name "*.tar.gz" -o -name "*.zip" | while read file; do
+          sha256sum "$file" >> checksums/SHA256SUMS
+        done
+        
+        # Ordenar el archivo de checksums
+        sort checksums/SHA256SUMS -o checksums/SHA256SUMS
+        
+        echo "Generated checksums:"
+        cat checksums/SHA256SUMS
+        
+    - name: 📤 Upload checksums
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./checksums/SHA256SUMS
+        asset_name: SHA256SUMS
+        asset_content_type: text/plain
+
+  # Job 5: Notificación de release
+  notify-release:
+    name: 📢 Release Notification
+    runs-on: ubuntu-latest
+    needs: [create-release, build-binaries, docker-release, create-checksums]
+    if: always()
+    
+    steps:
+    - name: 📢 Create release summary
+      run: |
+        echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Release URL:** [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Assets Created:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Linux binaries (amd64, arm64)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Windows binary (amd64)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ macOS binaries (amd64, arm64)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Docker images (multi-arch)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ SHA256 checksums" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🐳 Docker Images:" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY

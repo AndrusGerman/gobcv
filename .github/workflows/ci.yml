@@ -1,0 +1,265 @@
+# Workflow de CI para BCV Currency API
+# Se ejecuta en push y pull requests para validar el código
+
+name: CI - Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Variables de entorno globales
+env:
+  GO_VERSION: '1.24.2'
+  
+jobs:
+  # Job 1: Validación de código
+  lint:
+    name: 🔍 Code Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: 📦 Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+        
+    - name: 📥 Download dependencies
+      run: go mod download
+      
+    - name: 🔍 Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        args: --timeout=5m
+        
+    - name: 🛡️ Run security scan
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-no-fail -fmt sarif -out results.sarif ./...'
+        
+    - name: 📊 Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: results.sarif
+
+  # Job 2: Testing
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.24.2', '1.23.x']
+        
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        
+    - name: 📦 Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+          
+    - name: 📥 Download dependencies
+      run: go mod download
+      
+    - name: ✅ Verify dependencies
+      run: go mod verify
+      
+    - name: 🧪 Run tests with coverage
+      run: |
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        go tool cover -html=coverage.out -o coverage.html
+        
+    - name: 📊 Generate coverage report
+      run: go tool cover -func=coverage.out
+      
+    - name: 📤 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        
+    - name: 📎 Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ matrix.go-version }}
+        path: |
+          coverage.out
+          coverage.html
+
+  # Job 3: Build multiplataforma
+  build:
+    name: 🏗️ Build Binaries
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            output: api-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output: api-linux-arm64
+          - goos: windows
+            goarch: amd64
+            output: api-windows-amd64.exe
+          - goos: darwin
+            goarch: amd64
+            output: api-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: api-darwin-arm64
+            
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: 📦 Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: 📥 Download dependencies
+      run: go mod download
+      
+    - name: 🏗️ Build binary for ${{ matrix.goos }}/${{ matrix.goarch }}
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        mkdir -p bin
+        go build -a -installsuffix cgo \
+          -ldflags='-w -s -extldflags "-static"' \
+          -o bin/${{ matrix.output }} \
+          cmd/api/main.go
+          
+    - name: 📎 Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: bin/${{ matrix.output }}
+        retention-days: 30
+
+  # Job 4: Verificación de Docker build
+  docker-test:
+    name: 🐳 Docker Build Test
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🏗️ Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: |
+          bcv-currency-api:test
+          bcv-currency-api:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 🧪 Test Docker image
+      run: |
+        # Ejecutar contenedor para verificar que inicia correctamente
+        docker run --rm -d --name test-api -p 8080:8080 bcv-currency-api:test
+        
+        # Esperar a que la API esté lista
+        timeout 30s bash -c 'until curl -f http://localhost:8080/api/v1/health; do sleep 2; done'
+        
+        # Verificar endpoint de salud
+        curl -f http://localhost:8080/api/v1/health || exit 1
+        
+        # Limpiar
+        docker stop test-api
+
+  # Job 5: Análisis de vulnerabilidades
+  security:
+    name: 🛡️ Security Analysis
+    runs-on: ubuntu-latest
+    needs: [lint]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐹 Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 📊 Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Job 6: Reporte final
+  ci-success:
+    name: ✅ CI Success
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, docker-test, security]
+    
+    steps:
+    - name: ✅ All checks passed
+      run: |
+        echo "🎉 All CI checks passed successfully!"
+        echo "✅ Code linting completed"
+        echo "✅ Tests passed"
+        echo "✅ Multi-platform builds successful"
+        echo "✅ Docker build test passed"
+        echo "✅ Security analysis completed"
