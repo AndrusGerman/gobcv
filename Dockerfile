@@ -2,7 +2,7 @@
 # Utiliza multi-stage build para optimizar el tamaño de la imagen final
 
 # Etapa de build
-FROM golang:1.24.2-alpine AS builder
+FROM golang:1.25.0-alpine AS builder
 
 # Instalar certificados SSL y herramientas de build
 RUN apk add --no-cache ca-certificates git tzdata
