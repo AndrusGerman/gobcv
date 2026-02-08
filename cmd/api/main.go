@@ -29,7 +29,13 @@ func main() {
 	defer cacheService.Close()
 
 	repository := cache.NewMemoryRepository()
-	scraperService := scraper.NewBCVScraper()
+
+	// Inicializar scrapers
+	bcvScraper := scraper.NewBCVScraper()
+	binanceScraper := scraper.NewBinanceScraper()
+
+	// Usar composite scraper para combinar fuentes
+	scraperService := scraper.NewCompositeScraper(bcvScraper, binanceScraper)
 
 	// Inicializar servicios de aplicación
 	currencyService := service.NewCurrencyService(repository, scraperService, cacheService)
