@@ -22,8 +22,8 @@ on:
 # Variables de entorno globales
 env:
   GO_VERSION: '1.24.2'
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: harbor.andrusdiaz.dev
+  IMAGE_NAME: pabilo/pabilo-gobcv
 
 jobs:
   # Job 1: Crear release con binarios
@@ -274,8 +274,8 @@ jobs:
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.HARBOR_USERNAME }}
+        password: ${{ secrets.HARBOR_PASSWORD }}
         
     - name: 🏷️ Extract metadata
       id: meta
