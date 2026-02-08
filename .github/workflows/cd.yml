@@ -125,6 +125,12 @@ jobs:
           .
         echo "digest=$(docker images --no-trunc --quiet ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }})" >> $GITHUB_OUTPUT
         
+    - name: 🔐 Re-login before push
+      run: |
+        echo "Re-authenticating to ensure fresh credentials for push..."
+        echo '${{ steps.parse.outputs.pass }}' | docker login '${{ env.REGISTRY }}' -u '${{ steps.parse.outputs.user }}' --password-stdin
+        docker images | grep gobcv
+        
     - name: 🚀 Push Docker image
       run: |
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
