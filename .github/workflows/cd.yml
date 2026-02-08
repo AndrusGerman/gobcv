@@ -74,14 +74,12 @@ jobs:
         HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.name')
         HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.secret')
         echo "user=$HARBOR_USER" >> $GITHUB_OUTPUT
+        echo "::add-mask::$HARBOR_PASS"
         echo "pass=$HARBOR_PASS" >> $GITHUB_OUTPUT
           
     - name: 🔐 Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ steps.parse.outputs.user }}
-        password: ${{ steps.parse.outputs.pass }}
+      run: |
+        echo "${{ steps.parse.outputs.pass }}" | docker login ${{ env.REGISTRY }} -u "${{ steps.parse.outputs.user }}" --password-stdin
         
     - name: 🏷️ Extract metadata
       id: meta
