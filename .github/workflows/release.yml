@@ -259,12 +259,21 @@ jobs:
     name: 🔐 Verify Registry Auth
     runs-on: ubuntu-latest
     steps:
+      - name: 📋 Parse Harbor credentials
+        id: parse
+        run: |
+          HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.name')
+          HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.secret')
+          echo "🔍 Harbor Username: $HARBOR_USER"
+          echo "user=$HARBOR_USER" >> $GITHUB_OUTPUT
+          echo "pass=$HARBOR_PASS" >> $GITHUB_OUTPUT
+          
       - name: 🔑 Login to Harbor
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          username: ${{ steps.parse.outputs.user }}
+          password: ${{ steps.parse.outputs.pass }}
 
   docker-release:
     name: 🐳 Docker Release Build
@@ -281,12 +290,20 @@ jobs:
     - name: 🐳 Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
+    - name: 📋 Parse Harbor credentials
+      id: parse
+      run: |
+        HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.name')
+        HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.secret')
+        echo "user=$HARBOR_USER" >> $GITHUB_OUTPUT
+        echo "pass=$HARBOR_PASS" >> $GITHUB_OUTPUT
+        
     - name: 🔐 Log in to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ secrets.HARBOR_USERNAME }}
-        password: ${{ secrets.HARBOR_PASSWORD }}
+        username: ${{ steps.parse.outputs.user }}
+        password: ${{ steps.parse.outputs.pass }}
         
     - name: 🏷️ Extract metadata
       id: meta
