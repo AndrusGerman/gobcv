@@ -71,14 +71,20 @@ jobs:
     - name: 📋 Parse Harbor credentials
       id: parse
       run: |
+        echo "DEBUG: Raw secret length: ${#HARBOR_SECRET}"
         HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -j '.name')
         HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -j '.secret')
+        echo "DEBUG: Username: $HARBOR_USER"
+        echo "DEBUG: Username length: ${#HARBOR_USER}"
+        echo "DEBUG: Password length: ${#HARBOR_PASS}"
+        echo "DEBUG: First 10 chars of password: ${HARBOR_PASS:0:10}"
         echo "user=$HARBOR_USER" >> $GITHUB_OUTPUT
         echo "::add-mask::$HARBOR_PASS"
         echo "pass=$HARBOR_PASS" >> $GITHUB_OUTPUT
           
     - name: 🔐 Log in to Container Registry
       run: |
+        echo "Attempting login with user: ${{ steps.parse.outputs.user }}"
         echo "${{ steps.parse.outputs.pass }}" | docker login ${{ env.REGISTRY }} -u "${{ steps.parse.outputs.user }}" --password-stdin
         
     - name: 🏷️ Extract metadata
