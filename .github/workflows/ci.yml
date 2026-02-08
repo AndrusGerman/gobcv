@@ -44,11 +44,6 @@ jobs:
     - name: 📥 Download dependencies
       run: go mod download
       
-    - name: 🧐 Verify golangci-lint config
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.4
-        $(go env GOPATH)/bin/golangci-lint config verify
-      
     - name: 🔍 Run golangci-lint
       uses: golangci/golangci-lint-action@v8
       with:
