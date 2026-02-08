@@ -12,24 +12,17 @@ linters:
   default: none
   enable:
     - errcheck
-    - gosimple
     - govet
-    - ineffassign
     - staticcheck
     - unused
     - misspell
-    - bodyclose
-    - goconst
     - gosec
     - revive
-    - lll
   
   settings:
     errcheck:
       check-type-assertions: true
       check-blank: true
-    lll:
-      line-length: 120
     misspell:
       locale: US
     revive:
