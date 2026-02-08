@@ -18,7 +18,10 @@ jobs:
   lint:
     name: 🔍 Code Linting
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      security-events: write
+      
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
@@ -53,10 +56,11 @@ jobs:
         args: '-no-fail -fmt sarif -out results.sarif ./...'
         
     - name: 📊 Upload SARIF file
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: results.sarif
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   # Job 2: Testing
   test:
