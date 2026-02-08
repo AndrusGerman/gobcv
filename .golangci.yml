@@ -1,6 +1,7 @@
 # Configuración de golangci-lint para BCV Currency API
 # Creado por AndrusCodex
 
+version: "2"
 run:
   timeout: 5m
   tests: true
