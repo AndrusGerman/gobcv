@@ -104,24 +104,30 @@ jobs:
           org.opencontainers.image.vendor=AndrusCodex
           org.opencontainers.image.licenses=MIT
           
-    - name: 🏗️ Build and push Docker image
+    - name: 🏗️ Build Docker image
       id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        provenance: false
-        sbom: false
-        build-args: |
-          BUILDTIME=${{ github.event.head_commit.timestamp }}
-          VERSION=${{ github.ref_name }}
-          REVISION=${{ github.sha }}
+      run: |
+        # Build for amd64 only (faster, avoids buildx auth issues)
+        docker build \
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} \
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y-%m-%d) \
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d-%H%M) \
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          --build-arg BUILDTIME=${{ github.event.head_commit.timestamp }} \
+          --build-arg VERSION=${{ github.ref_name }} \
+          --build-arg REVISION=${{ github.sha }} \
+          --file ./Dockerfile \
+          .
+        echo "digest=$(docker images --no-trunc --quiet ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }})" >> $GITHUB_OUTPUT
+        
+    - name: 🚀 Push Docker image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y-%m-%d)
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$(date +%Y%m%d-%H%M)
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           
     - name: 📋 Generate build summary
       run: |
