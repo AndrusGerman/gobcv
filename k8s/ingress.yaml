@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pabilo-gobcv-ingress
+spec:
+  rules:
+  - host: api-tasa.pabilo.app
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pabilo-gobcv-backend-clusterip
+            port:
+              name: http
+  tls:
+  - hosts:
+    - api-tasa.pabilo.app
+    secretName: pabilo-cloudflare-crt
