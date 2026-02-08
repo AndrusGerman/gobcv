@@ -24,7 +24,6 @@ jobs:
   check-auth:
     name: 🔐 Verify Registry Auth
     runs-on: ubuntu-latest
-    environment: HARBOR
     steps:
       - name: 🔑 Login to Harbor
         uses: docker/login-action@v3
@@ -38,7 +37,6 @@ jobs:
     name: 🐳 Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: check-auth
-    environment: HARBOR
     permissions:
       contents: read
       packages: write
@@ -151,7 +149,6 @@ jobs:
     name: 🧪 Test Docker Image
     runs-on: ubuntu-latest
     needs: docker-build-push
-    environment: HARBOR
     
     strategy:
       matrix:
