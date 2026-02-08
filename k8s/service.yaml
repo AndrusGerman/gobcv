@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pabilo-gobcv-backend-clusterip
+  namespace: pabilo
 spec:
   type: ClusterIP
   selector:
@@ -15,6 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pabilo-gobcv-backend-app-deploy
+  namespace: pabilo
   labels:
     app: pabilo-gobcv-backend-app
 spec:

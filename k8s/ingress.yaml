@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: pabilo-gobcv-ingress
+  namespace: pabilo
 spec:
   rules:
   - host: api-tasa.pabilo.app
