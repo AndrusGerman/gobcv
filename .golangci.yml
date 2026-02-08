@@ -8,7 +8,8 @@ run:
   tests: true
 
 linters:
-  disable-all: true
+  # none = disable all by default, then enable specific ones
+  default: none
   enable:
     - errcheck
     - gosimple
@@ -23,14 +24,14 @@ linters:
     - gosec
     - revive
     - lll
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  lll:
-    line-length: 120
-  misspell:
-    locale: US
-  revive:
-    confidence: 0
+  
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    revive:
+      confidence: 0
