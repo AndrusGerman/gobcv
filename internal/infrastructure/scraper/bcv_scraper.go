@@ -57,13 +57,13 @@ func (s *BCVScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Currency, 
 
 	// Obtener Euro
 	if euroValue, err := s.extractCurrencyValue(bodyNode, "euro"); err == nil {
-		euro := entity.NewCurrency("EUR", "Euro", euroValue, s.baseURL)
+		euro := entity.NewCurrency("EUR", "Euro BCV", euroValue, s.baseURL)
 		currencies = append(currencies, euro)
 	}
 
 	// Obtener Dólar
 	if dolarValue, err := s.extractCurrencyValue(bodyNode, "dolar"); err == nil {
-		dolar := entity.NewCurrency("USD", "Dólar Americano", dolarValue, s.baseURL)
+		dolar := entity.NewCurrency("USD", "Dólar BCV", dolarValue, s.baseURL)
 		currencies = append(currencies, dolar)
 	}
 

@@ -128,7 +128,7 @@ func (s *BinanceScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Curren
 	averagePrice := total / float64(count)
 
 	// Crear la entidad Currency
-	usdt := entity.NewCurrency("USDT", "Tether (Binance)", averagePrice, "https://p2p.binance.com/")
+	usdt := entity.NewCurrency("USDT", "Dolar USDT", averagePrice, "https://p2p.binance.com/")
 
 	return []*entity.Currency{usdt}, nil
 }
