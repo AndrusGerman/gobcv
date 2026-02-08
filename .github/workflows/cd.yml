@@ -21,10 +21,23 @@ env:
   IMAGE_NAME: pabilo/pabilo-gobcv
 
 jobs:
+  check-auth:
+    name: 🔐 Verify Registry Auth
+    runs-on: ubuntu-latest
+    environment: HARBOR
+    steps:
+      - name: 🔑 Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
   # Job 1: Build y push de imagen Docker
   docker-build-push:
     name: 🐳 Build & Push Docker Image
     runs-on: ubuntu-latest
+    needs: check-auth
     environment: HARBOR
     permissions:
       contents: read
