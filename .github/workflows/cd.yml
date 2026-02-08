@@ -71,8 +71,8 @@ jobs:
     - name: 📋 Parse Harbor credentials
       id: parse
       run: |
-        HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.name' | tr -d '\n')
-        HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -r '.secret' | tr -d '\n')
+        HARBOR_USER=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -j '.name')
+        HARBOR_PASS=$(echo '${{ secrets.HARBOR_SECRET }}' | jq -j '.secret')
         echo "user=$HARBOR_USER" >> $GITHUB_OUTPUT
         echo "::add-mask::$HARBOR_PASS"
         echo "pass=$HARBOR_PASS" >> $GITHUB_OUTPUT

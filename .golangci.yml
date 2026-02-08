@@ -1,14 +1,12 @@
 # Configuración de golangci-lint v2 para BCV Currency API
 # Creado por AndrusCodex
 
-version: "2"
-
 run:
   timeout: 5m
   tests: true
 
 linters:
-  default: none
+  disable-all: true
   enable:
     - errcheck
     - gosimple
@@ -24,13 +22,13 @@ linters:
     - revive
     - lll
 
-  settings:
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-    lll:
-      line-length: 120
-    misspell:
-      locale: US
-    revive:
-      confidence: 0
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  lll:
+    line-length: 120
+  misspell:
+    locale: US
+  revive:
+    confidence: 0
