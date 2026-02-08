@@ -39,7 +39,7 @@ type ScraperConfig struct {
 	UserAgent       string        `json:"user_agent"`
 }
 
-// DatabaseConfig contiene la configuración de la base de datos (para futuras extensiones).
+// DatabaseConfig contiene la configuración de la base de datos (para futuras extensions).
 type DatabaseConfig struct {
 	Type     string `json:"type"`
 	Host     string `json:"host"`

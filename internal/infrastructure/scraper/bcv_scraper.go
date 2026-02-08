@@ -88,7 +88,7 @@ func (s *BCVScraper) ScrapeCurrency(ctx context.Context, currencyID string) (*en
 
 // IsHealthy verifica si el servicio de scraping está disponible.
 func (s *BCVScraper) IsHealthy(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "HEAD", s.baseURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", s.baseURL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *BCVScraper) IsHealthy(ctx context.Context) error {
 
 // getHTML obtiene el HTML de una URL.
 func (s *BCVScraper) getHTML(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return "", err
 	}

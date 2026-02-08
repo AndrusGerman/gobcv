@@ -24,7 +24,7 @@ func main() {
 
 	log.Printf("Iniciando BCV Currency API en %s:%s", cfg.Server.Host, cfg.Server.Port)
 
-	// Inicializar dependencias
+	// Inicializar dependencies
 	cacheService := cache.NewMemoryCache()
 	defer cacheService.Close()
 

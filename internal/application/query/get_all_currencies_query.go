@@ -44,7 +44,10 @@ type GetAllCurrenciesResult struct {
 }
 
 // Handle ejecuta la consulta para obtener todas las monedas.
-func (h *GetAllCurrenciesHandler) Handle(ctx context.Context, query GetAllCurrenciesQuery) (*GetAllCurrenciesResult, error) {
+func (h *GetAllCurrenciesHandler) Handle(
+	ctx context.Context,
+	query GetAllCurrenciesQuery,
+) (*GetAllCurrenciesResult, error) {
 	cacheKey := "currencies:all"
 
 	// Intentar obtener desde caché si está habilitado
@@ -89,7 +92,7 @@ func (h *GetAllCurrenciesHandler) Handle(ctx context.Context, query GetAllCurren
 	if query.UseCache {
 		if currenciesData, err := json.Marshal(currencies); err == nil {
 			// Cache por 2 minutos
-			h.cache.Set(ctx, cacheKey, currenciesData, 2*time.Minute)
+			_ = h.cache.Set(ctx, cacheKey, currenciesData, 2*time.Minute)
 		}
 	}
 

@@ -18,7 +18,7 @@ type GetCurrencyQuery struct {
 	UseCache   bool   `json:"use_cache"`
 }
 
-// GetCurrencyHandler maneja las consultas de monedas individuales.
+// GetCurrencyHandler maneja las consultas de monedas individuals.
 type GetCurrencyHandler struct {
 	currencyRepo repository.CurrencyRepository
 	cache        service.CacheService
@@ -37,16 +37,16 @@ func NewGetCurrencyHandler(
 
 // GetCurrencyResult representa el resultado de la consulta.
 type GetCurrencyResult struct {
-	Currency   *entity.Currency `json:"currency"`
-	FromCache  bool             `json:"from_cache"`
-	Success    bool             `json:"success"`
-	Message    string           `json:"message"`
+	Currency  *entity.Currency `json:"currency"`
+	FromCache bool             `json:"from_cache"`
+	Success   bool             `json:"success"`
+	Message   string           `json:"message"`
 }
 
 // Handle ejecuta la consulta para obtener una moneda.
 func (h *GetCurrencyHandler) Handle(ctx context.Context, query GetCurrencyQuery) (*GetCurrencyResult, error) {
 	cacheKey := fmt.Sprintf("currency:%s", query.CurrencyID)
-	
+
 	// Intentar obtener desde caché si está habilitado
 	if query.UseCache {
 		if cached, err := h.cache.Get(ctx, cacheKey); err == nil && cached != nil {
@@ -84,7 +84,7 @@ func (h *GetCurrencyHandler) Handle(ctx context.Context, query GetCurrencyQuery)
 	if query.UseCache {
 		if currencyData, err := json.Marshal(currency); err == nil {
 			// Cache por 5 minutos
-			h.cache.Set(ctx, cacheKey, currencyData, 5*time.Minute)
+			_ = h.cache.Set(ctx, cacheKey, currencyData, 5*time.Minute)
 		}
 	}
 

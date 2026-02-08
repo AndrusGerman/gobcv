@@ -50,7 +50,7 @@ func (h *Handlers) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // RefreshCurrencies maneja el endpoint para refrescar monedas.
@@ -82,7 +82,7 @@ func (h *Handlers) RefreshCurrencies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // GetCurrency maneja el endpoint para obtener una moneda específica.
@@ -122,7 +122,7 @@ func (h *Handlers) GetCurrency(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // GetAllCurrencies maneja el endpoint para obtener todas las monedas.
@@ -157,7 +157,7 @@ func (h *Handlers) GetAllCurrencies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // GetCacheStats maneja el endpoint para obtener estadísticas del caché.
@@ -171,7 +171,7 @@ func (h *Handlers) GetCacheStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // CORS middleware para permitir requests desde el frontend.

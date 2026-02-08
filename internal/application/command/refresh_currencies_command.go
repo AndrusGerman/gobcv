@@ -1,4 +1,4 @@
-// Package command contiene los comandos de la aplicación siguiendo el patrón CQRS.
+// Package command contiene los commandos de la aplicación siguiendo el patrón CQRS.
 package command
 
 import (
@@ -10,19 +10,19 @@ import (
 	"gobcv/internal/domain/service"
 )
 
-// RefreshCurrenciesCommand representa el comando para actualizar monedas.
+// RefreshCurrenciesCommand representa el commando para actualizar monedas.
 type RefreshCurrenciesCommand struct {
 	ForceRefresh bool `json:"force_refresh"`
 }
 
-// RefreshCurrenciesHandler maneja el comando de actualización de monedas.
+// RefreshCurrenciesHandler maneja el commando de actualización de monedas.
 type RefreshCurrenciesHandler struct {
 	currencyRepo repository.CurrencyRepository
 	scraper      service.CurrencyScraper
 	cache        service.CacheService
 }
 
-// NewRefreshCurrenciesHandler crea un nuevo handler para el comando.
+// NewRefreshCurrenciesHandler crea un nuevo handler para el commando.
 func NewRefreshCurrenciesHandler(
 	currencyRepo repository.CurrencyRepository,
 	scraper service.CurrencyScraper,
@@ -44,7 +44,10 @@ type RefreshCurrenciesResult struct {
 }
 
 // Handle ejecuta el comando de actualización de monedas.
-func (h *RefreshCurrenciesHandler) Handle(ctx context.Context, cmd RefreshCurrenciesCommand) (*RefreshCurrenciesResult, error) {
+func (h *RefreshCurrenciesHandler) Handle(
+	ctx context.Context,
+	cmd RefreshCurrenciesCommand,
+) (*RefreshCurrenciesResult, error) {
 	log.Printf("Ejecutando comando RefreshCurrencies (force_refresh: %v)", cmd.ForceRefresh)
 
 	// Verificar si el scraper está disponible
@@ -75,13 +78,13 @@ func (h *RefreshCurrenciesHandler) Handle(ctx context.Context, cmd RefreshCurren
 
 		// Invalidar caché para esta moneda
 		cacheKey := fmt.Sprintf("currency:%s", currency.ID)
-		h.cache.Delete(ctx, cacheKey)
+		_ = h.cache.Delete(ctx, cacheKey)
 
 		updatedCurrencies = append(updatedCurrencies, currency.ID)
 	}
 
 	// Invalidar caché de listado general
-	h.cache.Delete(ctx, "currencies:all")
+	_ = h.cache.Delete(ctx, "currencies:all")
 
 	return &RefreshCurrenciesResult{
 		UpdatedCount: len(updatedCurrencies),

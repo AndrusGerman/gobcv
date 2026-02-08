@@ -29,21 +29,21 @@ func (r *MemoryRepository) Save(ctx context.Context, currency *entity.Currency) 
 	if currency == nil {
 		return fmt.Errorf("currency cannot be nil")
 	}
-	
+
 	if !currency.IsValid() {
 		return fmt.Errorf("currency is not valid")
 	}
-	
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	
+
 	// Actualizar timestamp
 	currency.UpdatedAt = time.Now()
-	
+
 	// Crear una copia para evitar modificaciones externas
 	currencyCopy := *currency
 	r.currencies[currency.ID] = &currencyCopy
-	
+
 	return nil
 }
 
@@ -52,15 +52,15 @@ func (r *MemoryRepository) FindByID(ctx context.Context, id string) (*entity.Cur
 	if id == "" {
 		return nil, fmt.Errorf("id cannot be empty")
 	}
-	
+
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	currency, exists := r.currencies[id]
 	if !exists {
 		return nil, nil
 	}
-	
+
 	// Retornar una copia para evitar modificaciones externas
 	currencyCopy := *currency
 	return &currencyCopy, nil
@@ -70,15 +70,15 @@ func (r *MemoryRepository) FindByID(ctx context.Context, id string) (*entity.Cur
 func (r *MemoryRepository) FindAll(ctx context.Context) ([]*entity.Currency, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	currencies := make([]*entity.Currency, 0, len(r.currencies))
-	
+
 	for _, currency := range r.currencies {
 		// Crear copia para evitar modificaciones externas
 		currencyCopy := *currency
 		currencies = append(currencies, &currencyCopy)
 	}
-	
+
 	return currencies, nil
 }
 
@@ -87,10 +87,10 @@ func (r *MemoryRepository) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return fmt.Errorf("id cannot be empty")
 	}
-	
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	
+
 	delete(r.currencies, id)
 	return nil
 }
@@ -99,9 +99,9 @@ func (r *MemoryRepository) Delete(ctx context.Context, id string) error {
 func (r *MemoryRepository) FindByLastUpdate(ctx context.Context, since time.Time) ([]*entity.Currency, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	var currencies []*entity.Currency
-	
+
 	for _, currency := range r.currencies {
 		if currency.UpdatedAt.After(since) {
 			// Crear copia para evitar modificaciones externas
@@ -109,7 +109,7 @@ func (r *MemoryRepository) FindByLastUpdate(ctx context.Context, since time.Time
 			currencies = append(currencies, &currencyCopy)
 		}
 	}
-	
+
 	return currencies, nil
 }
 
@@ -117,6 +117,6 @@ func (r *MemoryRepository) FindByLastUpdate(ctx context.Context, since time.Time
 func (r *MemoryRepository) Count(ctx context.Context) (int, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	return len(r.currencies), nil
 }

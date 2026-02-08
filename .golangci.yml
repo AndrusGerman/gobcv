@@ -93,12 +93,10 @@ linters:
   # Linters habilitados
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - exhaustive
     - gochecknoinits
     - goconst
@@ -107,7 +105,6 @@ linters:
     - gofmt
     - goimports
     - revive
-    - gomnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -120,14 +117,23 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
-    - whitespace
+  # Configuración de depguard
+  depguard:
+    rules:
+      main:
+        files:
+          - "$all"
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/gorilla/mux
+          - golang.org/x/net/html
+          - gobcv
 
   # Linters deshabilitados
   disable:
@@ -137,9 +143,6 @@ linters:
     - gocognit
     - godot
     - godox
-    - goerr113
-    - interfacer
-    - maligned
     - nestif
     - prealloc
     - testpackage

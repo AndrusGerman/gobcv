@@ -15,7 +15,6 @@ func TestBinanceScraper_ScrapeCurrencies(t *testing.T) {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != "/" { // httptest server path is /
-			// t.Errorf("Expected path /, got %s", r.URL.Path)
 			// Note: real implementation uses full URL, test uses base URL of mock server
 		}
 
@@ -31,11 +30,11 @@ func TestBinanceScraper_ScrapeCurrencies(t *testing.T) {
 		}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		_, _ = w.Write([]byte(response))
 	}))
 	defer server.Close()
 
-	// Initialise scraper with mock URL
+	// Initialize scraper with mock URL
 	scraper := &BinanceScraper{
 		apiURL:     server.URL,
 		httpClient: server.Client(),

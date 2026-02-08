@@ -108,7 +108,7 @@ func (s *BinanceScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Curren
 		return nil, fmt.Errorf("binance API returned unsuccessful response or no data")
 	}
 
-	// Calcular el precio promedio
+	// Calculate el precio promedio
 	var total float64
 	var count int
 
@@ -129,7 +129,7 @@ func (s *BinanceScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Curren
 
 	// Crear la entidad Currency
 	usdt := entity.NewCurrency("USDT", "Tether (Binance)", averagePrice, "https://p2p.binance.com/")
-	
+
 	return []*entity.Currency{usdt}, nil
 }
 
@@ -154,13 +154,14 @@ func (s *BinanceScraper) ScrapeCurrency(ctx context.Context, currencyID string) 
 // IsHealthy verifica si el servicio de Binance está disponible.
 func (s *BinanceScraper) IsHealthy(ctx context.Context) error {
 	// Hacemos una petición simple para verificar
-	req, err := http.NewRequestWithContext(ctx, "POST", s.apiURL, bytes.NewBuffer([]byte(`{"page":1,"rows":1,"asset":"USDT","tradeType":"BUY","fiat":"VES"}`)))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.apiURL,
+		bytes.NewBuffer([]byte(`{"page":1,"rows":1,"asset":"USDT","tradeType":"BUY","fiat":"VES"}`)))
 	if err != nil {
 		return err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return err
