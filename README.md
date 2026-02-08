@@ -1,6 +1,6 @@
 # BCV Currency API
 
-Una API REST moderna para obtener tipos de cambio del Banco Central de Venezuela (BCV) implementada con arquitectura hexagonal, CQRS y caché en memoria.
+Una API REST moderna para obtener tipos de cambio del Banco Central de Venezuela (BCV) y Binance P2P implementada con arquitectura hexagonal, CQRS y caché en memoria.
 
 ## 🏗️ Arquitectura
 
@@ -24,7 +24,7 @@ internal/
 └── infrastructure/      # 🔌 Adaptadores
     ├── http/           # API REST
     ├── cache/          # Caché y repositorio en memoria
-    └── scraper/        # Scraping del BCV
+    └── scraper/        # Scraping del BCV y Binance
 
 pkg/
 └── config/              # ⚙️ Configuración
@@ -42,7 +42,7 @@ pkg/
 
 - ✅ **API REST** completa con endpoints documentados
 - ✅ **Caché en memoria** con TTL configurable y limpieza automática
-- ✅ **Scraping robusto** del sitio web del BCV
+- ✅ **Scraping robusto** del sitio web del BCV y Binance P2P
 - ✅ **Actualización automática** periódica de tipos de cambio
 - ✅ **Manejo de errores** comprehensivo
 - ✅ **Configuración por variables de entorno**
@@ -190,6 +190,7 @@ export SCRAPER_REFRESH_INTERVAL=30m
 - `MemoryCache`: Implementación de caché en memoria
 - `MemoryRepository`: Repositorio en memoria para monedas
 - `BCVScraper`: Scraper del sitio web del BCV
+- `BinanceScraper`: Scraper de Binance P2P para USDT
 - `HTTPHandlers`: Handlers REST de la API
 
 ## 🔄 Flujo de Datos
@@ -203,6 +204,7 @@ graph TB
     D --> F[Cache Service]
     D --> G[Scraper Service]
     G --> H[BCV Website]
+    G --> I[Binance P2P]
     
     subgraph "Infrastructure Layer"
         B
