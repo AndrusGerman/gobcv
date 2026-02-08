@@ -85,7 +85,7 @@ jobs:
     - name: 🔐 Log in to Container Registry
       run: |
         echo "Attempting login with user: ${{ steps.parse.outputs.user }}"
-        echo "${{ steps.parse.outputs.pass }}" | docker login ${{ env.REGISTRY }} -u "${{ steps.parse.outputs.user }}" --password-stdin
+        echo '${{ steps.parse.outputs.pass }}' | docker login '${{ env.REGISTRY }}' -u '${{ steps.parse.outputs.user }}' --password-stdin
         
     - name: 🏷️ Extract metadata
       id: meta
