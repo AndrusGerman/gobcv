@@ -3,6 +3,7 @@ package scraper
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +29,9 @@ func NewBCVScraper() service.CurrencyScraper {
 		baseURL: "https://www.bcv.org.ve/",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 		},
 	}
 }

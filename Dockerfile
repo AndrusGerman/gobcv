@@ -5,7 +5,8 @@
 FROM golang:1.25.5-alpine AS builder
 
 # Instalar certificados SSL y herramientas de build
-RUN apk add --no-cache ca-certificates git tzdata
+# Actualizamos el índice de paquetes y obtenemos la última versión de ca-certificates
+RUN apk update && apk add --no-cache ca-certificates git tzdata && update-ca-certificates
 
 # Establecer directorio de trabajo
 WORKDIR /app

@@ -4,6 +4,7 @@ package scraper
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"gobcv/internal/domain/entity"
@@ -22,18 +23,20 @@ func NewCompositeScraper(scrapers ...service.CurrencyScraper) service.CurrencySc
 	}
 }
 
-// ScrapeCurrencies obtiene monedas de todos los scrapers configurados.
 func (s *CompositeScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Currency, error) {
 	var (
 		wg            sync.WaitGroup
 		mu            sync.Mutex
 		allCurrencies []*entity.Currency
 		errors        []error
+		successCount  int
+		failureCount  int
+		scraperNames  = []string{"BCVScraper", "BinanceScraper"} // Track scraper names for logging
 	)
 
-	for _, scraper := range s.scrapers {
+	for i, scraper := range s.scrapers {
 		wg.Add(1)
-		go func(sc service.CurrencyScraper) {
+		go func(sc service.CurrencyScraper, index int) {
 			defer wg.Done()
 
 			currencies, err := sc.ScrapeCurrencies(ctx)
@@ -41,15 +44,28 @@ func (s *CompositeScraper) ScrapeCurrencies(ctx context.Context) ([]*entity.Curr
 			mu.Lock()
 			defer mu.Unlock()
 
+			scraperName := "UnknownScraper"
+			if index < len(scraperNames) {
+				scraperName = scraperNames[index]
+			}
+
 			if err != nil {
 				errors = append(errors, err)
+				failureCount++
+				log.Printf("[CompositeScraper] %s FAILED: %v", scraperName, err)
 			} else {
 				allCurrencies = append(allCurrencies, currencies...)
+				successCount++
+				log.Printf("[CompositeScraper] %s SUCCESS: scraped %d currencies", scraperName, len(currencies))
 			}
-		}(scraper)
+		}(scraper, i)
 	}
 
 	wg.Wait()
+
+	// Log summary
+	log.Printf("[CompositeScraper] Summary: %d/%d scrapers succeeded, %d failed, total currencies: %d",
+		successCount, len(s.scrapers), failureCount, len(allCurrencies))
 
 	if len(allCurrencies) == 0 && len(errors) > 0 {
 		return nil, fmt.Errorf("all scrapers failed: %v", errors)
