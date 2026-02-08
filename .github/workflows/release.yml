@@ -259,6 +259,7 @@ jobs:
     name: 🐳 Docker Release Build
     runs-on: ubuntu-latest
     needs: create-release
+    environment: HARBOR
     permissions:
       contents: read
       packages: write
