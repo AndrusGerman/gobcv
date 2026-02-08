@@ -129,6 +129,10 @@ jobs:
       run: |
         echo "Re-authenticating to ensure fresh credentials for push..."
         echo '${{ steps.parse.outputs.pass }}' | docker login '${{ env.REGISTRY }}' -u '${{ steps.parse.outputs.user }}' --password-stdin
+        echo "Checking Docker config..."
+        cat ~/.docker/config.json
+        echo "Testing Docker credentials with curl..."
+        curl -u '${{ steps.parse.outputs.user }}:${{ steps.parse.outputs.pass }}' https://${{ env.REGISTRY }}/v2/ || echo "Curl auth test failed"
         docker images | grep gobcv
         
     - name: 🚀 Push Docker image
