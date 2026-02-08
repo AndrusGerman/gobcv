@@ -89,6 +89,19 @@ linters-settings:
       - whyNoLint
       - wrapperFunc
 
+  # Configuración de depguard
+  depguard:
+    rules:
+      main:
+        files:
+          - "$all"
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/gorilla/mux
+          - golang.org/x/net/html
+          - gobcv
+
 linters:
   # Linters habilitados
   enable:
@@ -122,18 +135,7 @@ linters:
     - unconvert
     - unparam
     - unused
-  # Configuración de depguard
-  depguard:
-    rules:
-      main:
-        files:
-          - "$all"
-          - "!$test"
-        allow:
-          - $gostd
-          - github.com/gorilla/mux
-          - golang.org/x/net/html
-          - gobcv
+
 
   # Linters deshabilitados
   disable:
