@@ -127,8 +127,8 @@ func (h *Handlers) GetCurrency(w http.ResponseWriter, r *http.Request) {
 
 // GetAllCurrencies maneja el endpoint para obtener todas las monedas.
 func (h *Handlers) GetAllCurrencies(w http.ResponseWriter, r *http.Request) {
-	useCache := r.URL.Query().Get("cache") != "false" // Por defecto usa caché
-	includeStale := r.URL.Query().Get("include_stale") == "true"
+	useCache := r.URL.Query().Get("cache") != "false"             // Por defecto usa caché
+	includeStale := r.URL.Query().Get("include_stale") != "false" // Por defecto incluye obsoletos
 
 	query := query.GetAllCurrenciesQuery{
 		UseCache:     useCache,

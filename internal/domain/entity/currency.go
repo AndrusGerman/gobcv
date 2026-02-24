@@ -5,13 +5,24 @@ import (
 	"time"
 )
 
+// CurrencyHistory representa una entrada en el historial de precios.
+type CurrencyHistory struct {
+	Value      float64   `json:"value"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	Difference float64   `json:"difference"`
+}
+
 // Currency representa una moneda con su valor de cambio.
 type Currency struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Value     float64   `json:"value"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Source    string    `json:"source"`
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	Value             float64           `json:"value"`
+	PreviousValue     float64           `json:"previous_value,omitempty"`
+	Difference        float64           `json:"difference"`
+	UpdatedAt         time.Time         `json:"updated_at"`
+	PreviousUpdatedAt time.Time         `json:"previous_updated_at,omitempty"`
+	Source            string            `json:"source"`
+	History           []CurrencyHistory `json:"history,omitempty"`
 }
 
 // NewCurrency crea una nueva instancia de Currency.
@@ -22,6 +33,7 @@ func NewCurrency(id, name string, value float64, source string) *Currency {
 		Value:     value,
 		UpdatedAt: time.Now(),
 		Source:    source,
+		History:   make([]CurrencyHistory, 0),
 	}
 }
 

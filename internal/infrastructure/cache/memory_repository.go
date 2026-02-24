@@ -37,8 +37,47 @@ func (r *MemoryRepository) Save(ctx context.Context, currency *entity.Currency) 
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
+	now := time.Now()
+
+	existing, exists := r.currencies[currency.ID]
+	if exists {
+		// Preservar el historial existente
+		currency.History = existing.History
+		currency.PreviousValue = existing.PreviousValue
+		currency.PreviousUpdatedAt = existing.PreviousUpdatedAt
+		currency.Difference = existing.Difference
+
+		// Si el valor es diferente al anterior, actualizar el historial
+		if existing.Value != currency.Value {
+			difference := currency.Value - existing.Value
+
+			// Agregar el valor anterior al historial
+			historyEntry := entity.CurrencyHistory{
+				Value:      existing.Value,
+				UpdatedAt:  existing.UpdatedAt,
+				Difference: existing.Difference,
+			}
+
+			// Agregar al inicio del historial (limitado a 10 elementos)
+			newHistory := append([]entity.CurrencyHistory{historyEntry}, currency.History...)
+			if len(newHistory) > 10 {
+				newHistory = newHistory[:10]
+			}
+
+			currency.History = newHistory
+			currency.PreviousValue = existing.Value
+			currency.PreviousUpdatedAt = existing.UpdatedAt
+			currency.Difference = difference
+		}
+	} else {
+		// Primera vez, asegurar que History esté inicializado
+		if currency.History == nil {
+			currency.History = make([]entity.CurrencyHistory, 0)
+		}
+	}
+
 	// Actualizar timestamp
-	currency.UpdatedAt = time.Now()
+	currency.UpdatedAt = now
 
 	// Crear una copia para evitar modificaciones externas
 	currencyCopy := *currency
