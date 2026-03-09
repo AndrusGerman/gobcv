@@ -2,7 +2,7 @@
 # Utiliza multi-stage build para optimizar el tamaño de la imagen final
 
 # Etapa de build
-FROM golang:1.25.5-alpine AS builder
+FROM golang:1.26.1-alpine AS builder
 
 # Instalar certificados SSL y herramientas de build
 # Actualizamos el índice de paquetes y obtenemos la última versión de ca-certificates
